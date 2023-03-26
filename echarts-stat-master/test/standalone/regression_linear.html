@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="../lib/esl.js"></script>
+    <script src="../lib/config.js"></script>
+    <script src="../lib/jquery.min.js"></script>
+</head>
+
+<body>
+    <style>
+        html,
+        body,
+        #main {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    <div id="main"></div>
+    <script>
+        function shortNumber(num = 0, d = 3) {
+            if (num !== 0) {
+                // logaB / logaC = logcB 所以p就是10的幂
+                // log的值必须>0,此处修复了bug
+                var p = Math.floor(Math.log(num<0?-num:num) / Math.LN10);
+                if(p===0){return num.toFixed(d);}
+                var n = num * (10 ** -p);
+                n = n.toFixed(d);
+                return `${n}e${p}`;
+            }
+            return 0
+        };
+
+        require([
+            'echarts',
+            'ecStat'
+        ], function (echarts, ecStat) {
+
+            var chart = echarts.init(document.getElementById('main'));
+
+            $.getJSON('../data/regression_data0.json')
+                .done(function (data) {
+                    console.log(data);
+                    data = [[0.548,50.626],
+[0.574,52.815],
+[0.600,55.766],
+[0.624,57.254],
+[0.648,59.599],
+[0.671,61.257],
+[0.707,63.963],
+[0.742,67.640],
+[0.775,70.551],
+[0.806,73.677],
+[0.837,76.257]];
+                    var myRegression = ecStat.regression('linear', data);
+                    var gradient = shortNumber(myRegression.parameter.gradient,3);
+                    var intercept =shortNumber(myRegression.parameter.intercept,3);
+                    // var sign = intercept > 0 ? '+' : '-';
+                    // intercept = intercept > 0 ? intercept : -intercept;
+                    myRegression.expression = `y = (${gradient})x + (${intercept})`;
+                    console.log(myRegression);
+
+                    chart.setOption({
+                        title:{text:"波速v与√T^0.5的关系",
+                    left:'center',top:'10px'},
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: {
+                                type: 'cross'
+                            }
+                        },
+                        xAxis: {
+                            type: 'value',
+                            min:0.5,
+                            splitLine: {
+                                lineStyle: {
+                                    type: 'dashed'
+                                }
+                            },
+                            name:'T^0.5'
+                        },
+                        yAxis: {
+                            type: 'value',
+                            min: 50,
+                            splitLine: {
+                                lineStyle: {
+                                    type: 'dashed'
+                                }
+                            },
+                            name:'v / m/s'
+                        },
+                        series: [{
+                            name: 'scatter',
+                            type: 'scatter',
+                            label: {
+                                emphasis: {
+                                    show: true
+                                }
+                            },
+                            data: data
+                        }, {
+                            name: 'line',
+                            type: 'line',
+                            showSymbol: false,
+                            data: myRegression.points,
+                            markPoint: {
+                                itemStyle: {
+                                    normal: {
+                                        color: 'transparent'
+                                    }
+                                },
+                                label: {
+                                    normal: {
+                                        show: true,
+                                        formatter: myRegression.expression,
+                                        textStyle: {
+                                            color: '#333',
+                                            fontSize: 14
+                                        }
+                                    }
+                                },
+                                data: [{
+                                    coord: myRegression.points[myRegression.points.length - 1]
+                                }]
+                            }
+                        }]
+                    });
+                });
+        });
+    </script>
+</body>
+
+</html>
