@@ -68,7 +68,7 @@ function parseCode(pre, nofocus = false) {
   if (!lines) { return; }
   pre.className = "md-fences md-end-block md-diagram md-fences-advanced ty-contain-cm modeLoaded" + (nofocus ? "" : " md-focus");
   var script = '';
-  var metaLine;// = lines.children[0].textContent;
+  var metaLine; // = lines.children[0].textContent;
   lines.childNodes.forEach((v) => {
     script += v.textContent + '\n';
   });
@@ -82,7 +82,7 @@ function parseCode(pre, nofocus = false) {
     debugMd && console.log('Echarts script:', script);
     return;
   }
-  var classDiagram = 'option', size = ['100%', '400px'], mode = 'svg', theme = null;
+  var classDiagram = 'option', size = ['100%', '500px'], mode = 'svg', theme = null;
   metaLine.split(' ').forEach((v) => {
     switch (true) {
       case /[ \t]+/.test(v): break;
