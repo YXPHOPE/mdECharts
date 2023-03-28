@@ -112,6 +112,7 @@ function parseCode(pre, nofocus = false) {
   }
   try {
     eval(script);
+    if (!option) {eval(metaLine+'\n'+script);}
     if (option) {
       if (MDexport) { option.animation = false; }
       myChart.setOption(option);
@@ -303,4 +304,4 @@ function copyStr(str) {
   input.remove();
 }
 
-
+// var chart = echarts.init(document.getElementById('main'),null,{renderer: 'svg',});
