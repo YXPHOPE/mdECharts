@@ -1,4 +1,20 @@
 var debugMd = true;
+var cssStyle = `
+pre.md-meta-block.md-end-block,pre.md-fences.md-end-block.ty-contain-cm.modeLoaded[lang=style] {
+  padding: 5px;
+  height: 30px;
+  margin-bottom: 4px;
+  opacity: 0.2;
+  overflow: hidden;
+  transition: opacity 0.4s;
+}
+pre.md-meta-block.md-end-block.md-focus,pre.md-fences.md-end-block.ty-contain-cm.modeLoaded.md-focus[lang=style] {
+  padding: 16px;
+  height: 100%;
+  margin-bottom: 10px;
+  opacity: 1;
+}
+`;
 // 思来想去，与其自己做解析，还不如首行写上类型，然后提供一个按钮共用户选择是否粘贴该类型的模板
 const Template = {
   bar: `option = {
@@ -35,6 +51,9 @@ series: [
 const metaProperty = ['title', 'xlabel', 'ylabel', 'xrange', 'yrange'];
 const chartType = ['bar', 'scatter', 'function'];
 if (!window.MDexport) { var MDexport = false; }
+
+var write = document.querySelector('div#write');
+
 function nE(e, id = undefined, cla = undefined, html = '') {
   var ele = document.createElement(e);
   id && (ele.id = id);
@@ -112,7 +131,7 @@ function parseCode(pre, nofocus = false) {
   }
   try {
     eval(script);
-    if (!option) {eval(metaLine+'\n'+script);}
+    if (!option) { eval(metaLine + '\n' + script); }
     if (option) {
       if (MDexport) { option.animation = false; }
       myChart.setOption(option);
@@ -138,40 +157,59 @@ function parseCode(pre, nofocus = false) {
   }
 }
 
-var write = document.querySelector('div#write');
-write.addEventListener("input", (e) => {
-  var pre = e.path[3] || {};
-  if (pre && pre.lang === 'echarts') {
-    parseCode(pre);
-  }
-});
-// click事件被Typora给阻止冒泡了
-write.addEventListener("mousedown", (e) => {
-  var pre;
-  for (let i = 0; i < e.path.length; i++) {
-    if (e.path[i].lang === 'echarts') {
-      pre = e.path[i];
-      // parseCode(pre);
-      var h = 30;
-      var d = pre.querySelector('.md-diagram-panel.md-fences-adv-panel');
-      d && (h = d.clientHeight + 30);
-      pre.style.marginBottom = h + 'px';
-      break;
+function copyStr(str) {
+  // 粘贴示例代码，textarea可以多行，input不行
+  var input = document.createElement('textarea');
+  // 不能设置display none，只能脱离文档流、全透明
+  input.style.cssText = 'opacity:0;position:absolute;z-index:-1;';
+  document.body.appendChild(input);
+  input.value = str;
+  input.select();
+  document.execCommand("Copy");
+  input.remove();
+}
+
+function addStyle(css) {
+  let c = nE('style');
+  c.innerHTML = css;
+  document.head.append(c);
+}
+
+var initMD = function () {
+  addStyle(cssStyle);
+  write.addEventListener("input", (e) => {
+    var pre = e.path[3] || {};
+    if (pre && pre.lang === 'echarts') {
+      parseCode(pre);
     }
-  }
-});
-var styleCustom = nE('style', 'custom', 0);
-document.head.appendChild(styleCustom);
-// 暂未找到更好的方法确定打开另一个文件
-var firstChildText = '·。·';
-var intervalFileChange = setInterval(() => {
-  if (write.children[0].textContent !== firstChildText) {
-    if (write.textContent === '') {
-      // 如果是新文档，则默认加上meta信息和自定义style
-      // 注入html或者元素都无效（能看到，但是md里面没有），只能模拟系统粘贴或者给用户点击复制然后自行粘贴
-      let button = nE('button', 0, 0, '复制meta信息和style样式');
-      button.onclick = () => {
-        copyStr(`---
+  });
+  // click事件被Typora给阻止冒泡了
+  write.addEventListener("mousedown", (e) => {
+    var pre;
+    for (let i = 0; i < e.path.length; i++) {
+      if (e.path[i].lang === 'echarts') {
+        pre = e.path[i];
+        // parseCode(pre);
+        var h = 30;
+        var d = pre.querySelector('.md-diagram-panel.md-fences-adv-panel');
+        d && (h = d.clientHeight + 30);
+        pre.style.marginBottom = h + 'px';
+        break;
+      }
+    }
+  });
+  var styleCustom = nE('style', 'custom', 0);
+  document.head.appendChild(styleCustom);
+  // 暂未找到更好的方法确定打开另一个文件
+  var firstChildText = '·。·';
+  var intervalFileChange = setInterval(() => {
+    if (write.children[0].textContent !== firstChildText) {
+      if (write.textContent === '') {
+        // 如果是新文档，则默认加上meta信息和自定义style
+        // 注入html或者元素都无效（能看到，但是md里面没有），只能模拟系统粘贴或者给用户点击复制然后自行粘贴
+        let button = nE('button', 0, 0, '复制meta信息和style样式');
+        button.onclick = () => {
+          copyStr(`---
 title: Typora Note
 author: YXP
 creator: YXP
@@ -187,45 +225,44 @@ keywords: [Typora, Note, Latex, Diagram]
 }
 */
 \`\`\``);
-        button.remove();
+          button.remove();
+        }
+        write.appendChild(button);
       }
-      write.appendChild(button);
+      // 额外的功能：对```style自主添加样式的支持, 在切换文件时生效
+      let sty = write.querySelector('.md-fences.md-end-block[lang=style]');
+      if (sty) {
+        styleCustom.innerHTML = sty.querySelector('.CodeMirror-code').textContent;
+        sty.style.color = '#777';
+      } else { styleCustom.innerHTML = ''; }
+      firstChildText = write.children[0].textContent;
+      var chartCode = write.querySelectorAll('.md-fences.md-end-block[lang=echarts]');
+      chartCode.forEach((v) => {
+        console.log('Render charts: ', v);
+        parseCode(v, nofocus = true);
+      });
     }
-    // 额外的功能：对```style自主添加样式的支持, 在切换文件时生效
+  }, 2000);
+  if (MDexport) {
     let sty = write.querySelector('.md-fences.md-end-block[lang=style]');
     if (sty) {
       styleCustom.innerHTML = sty.querySelector('.CodeMirror-code').textContent;
-      sty.style.color = '#777';
+      sty.style.display = 'none';
     } else { styleCustom.innerHTML = ''; }
-    firstChildText = write.children[0].textContent;
-    var chartCode = write.querySelectorAll('.md-fences.md-end-block[lang=echarts]');
+    var chartCode = document.querySelectorAll('.md-fences.md-end-block[lang=echarts]');
     chartCode.forEach((v) => {
       console.log('Render charts: ', v);
       parseCode(v, nofocus = true);
     });
   }
-}, 2000);
-if (MDexport) {
-  let sty = write.querySelector('.md-fences.md-end-block[lang=style]');
-  if (sty) {
-    styleCustom.innerHTML = sty.querySelector('.CodeMirror-code').textContent;
-    sty.style.display = 'none';
-  } else { styleCustom.innerHTML = ''; }
-  var chartCode = document.querySelectorAll('.md-fences.md-end-block[lang=echarts]');
-  chartCode.forEach((v) => {
-    console.log('Render charts: ', v);
-    parseCode(v, nofocus = true);
-  });
-}
-var style = nE('style', 0, 0);
-style.innerHTML = `
+
+  addStyle(`
 #copyTemp>ul>li:hover {font-weight:bold;background-color:aqua;}
 #copyTemp>ul>li {padding:2px 4px 2px 16px;}
-`;
-document.head.append(style);
+`);
 
-var div = nE('div', 'copyTemp', 0, '复制示例代码');
-var list = nE('ul', 0, 0, `
+  var div = nE('div', 'copyTemp', 0, '复制示例代码');
+  var list = nE('ul', 0, 0, `
 <li type="bar">柱形图</li>
 <li type="line">折线图</li>
 <li type="scatter">散点图</li>
@@ -233,8 +270,8 @@ var list = nE('ul', 0, 0, `
 <li type="polar">极坐标</li>
 <li type="bar_race">柱形追赶图</li>
 `);
-div.append(list);
-list.style.cssText = `
+  div.append(list);
+  list.style.cssText = `
 display:none;
 border-top:solid 2px #ccc;
 text-align:left;
@@ -242,7 +279,7 @@ list-style: none;
 padding: 0;
 margin: 0;
 `;
-div.style.cssText = `position: fixed;
+  div.style.cssText = `position: fixed;
 right: 20px;
 top: 10px;
 z-index: 999;
@@ -253,55 +290,43 @@ background-color: #f8f8f8;
 text-align: center;
 width:130px;
 cursor: pointer;display: none;`;
-document.body.append(div);
-div.mouseout = true;
-// 点击事件
-div.onclick = (e) => {
-  if (e.target.tagName !== 'LI') { return; }
-  copyStr(Template[e.target.type]);
-  div.style.display = 'none';
-
-}
-div.addEventListener('mouseenter', (e) => {
-  div.style.backgroundColor = '#ded';
-  div.mouseout = false;
-  list.style.display = "block";
-})
-div.addEventListener('mouseleave', () => {
+  document.body.append(div);
   div.mouseout = true;
-  div.style.backgroundColor = '#f8f8f8';
-  list.style.display = "none";
-  setTimeout(() => {
-    if (div.mouseout) {
-      div.style.display = 'none';
-    }
-  }, 2000)
-})
-write.addEventListener('click', (e) => {
-  // 检查有无正在输入的获得焦点的echarts pre
-  if (write.querySelector('pre.md-fences.md-end-block.md-focus[lang=echarts]') && div.style.display !== 'block') {
-    // 显示按钮
-    div.style.display = 'block';
-    div.style.left = (e.screenX + 200) + 'px';
-    div.style.top = (e.screenY - 80) + 'px';
+  // 点击事件
+  div.onclick = (e) => {
+    if (e.target.tagName !== 'LI') { return; }
+    copyStr(Template[e.target.type]);
+    div.style.display = 'none';
+  }
+  div.addEventListener('mouseenter', (e) => {
+    div.style.backgroundColor = '#ded';
+    div.mouseout = false;
+    list.style.display = "block";
+  })
+  div.addEventListener('mouseleave', () => {
+    div.mouseout = true;
+    div.style.backgroundColor = '#f8f8f8';
+    list.style.display = "none";
     setTimeout(() => {
       if (div.mouseout) {
         div.style.display = 'none';
       }
-    }, 2000);
-  }
-});
-
-function copyStr(str) {
-  // 粘贴示例代码，textarea可以多行，input不行
-  var input = document.createElement('textarea');
-  // 不能设置display none，只能脱离文档流、全透明
-  input.style.cssText = 'opacity:0;position:absolute;z-index:-1;';
-  document.body.appendChild(input);
-  input.value = str;
-  input.select();
-  document.execCommand("Copy");
-  input.remove();
+    }, 2000)
+  })
+  write.addEventListener('click', (e) => {
+    // 检查有无正在输入的获得焦点的echarts pre
+    if (write.querySelector('pre.md-fences.md-end-block.md-focus[lang=echarts]') && div.style.display !== 'block') {
+      // 显示按钮
+      div.style.display = 'block';
+      div.style.left = (e.screenX + 200) + 'px';
+      div.style.top = (e.screenY - 80) + 'px';
+      setTimeout(() => {
+        if (div.mouseout) {
+          div.style.display = 'none';
+        }
+      }, 2000);
+    }
+  });
 }
 
-// var chart = echarts.init(document.getElementById('main'),null,{renderer: 'svg',});
+initMD();
