@@ -2,6 +2,8 @@
 
 在Typora中实现输入代码通过ECharts解析成图表的功能。
 
+适用版本：Typora V1.5.9 for Windows
+
 另外还有其他功能在逐步添加中。
 
 ## 安装
@@ -125,8 +127,6 @@ option = {
 
 图表格式目前就照搬ECharts的，不想写新的解析代码了，需要哪种类型直接去[ECharts官网](https://echarts.apache.org/examples/en/index.html)取用。
 
-
-
 2. 添加自定义样式
 
 输入\`\`\`style回车进入代码块（仅注入第一个style代码块的内容）输入css样式即可，在切换文件时会更新一次。例如：
@@ -139,8 +139,6 @@ option = {
 	font-size:11pt;
 }
 ```
-
-
 
 ### 导出PDF、HTML
 
